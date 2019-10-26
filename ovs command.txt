@@ -1,0 +1,22 @@
+ovs-ofctl add-flows s1 - << 'EOF'
+in_port=1, eth_type=0x0800, actions=set_field:0.0.0.0->ip_src,set_field:0.0.0.0->ip_dst,set_field:11:11:11:11:11:11->eth_src,set_field:11:11:11:11:11:11->eth_dst,4
+in_port=2, eth_type=0x0800, actions=set_field:0.0.0.0->ip_src,set_field:0.0.0.0->ip_dst,set_field:22:22:22:22:22:22->eth_src,set_field:22:22:22:22:22:22->eth_dst,4
+in_port=3, eth_type=0x0800, actions=set_field:0.0.0.0->ip_src,set_field:0.0.0.0->ip_dst,set_field:33:33:33:33:33:33->eth_src,set_field:33:33:33:33:33:33->eth_dst,4
+eth_type=0x0800, eth_src=44:44:44:44:44:44, actions=set_field:10.0.0.4->ip_src,set_field:10.0.0.1->ip_dst,set_field:00:00:00:00:00:04->eth_src,set_field:00:00:00:00:00:01->eth_dst,1
+eth_type=0x0800, eth_src=55:55:55:55:55:55, actions=set_field:10.0.0.5->ip_src,set_field:10.0.0.2->ip_dst,set_field:00:00:00:00:00:05->eth_src,set_field:00:00:00:00:00:02->eth_dst,2
+eth_type=0x0800, eth_src=66:66:66:66:66:66, actions=set_field:10.0.0.6->ip_src,set_field:10.0.0.3->ip_dst,set_field:00:00:00:00:00:06->eth_src,set_field:00:00:00:00:00:03->eth_dst,3
+EOF
+
+
+ovs-ofctl add-flow s2 'in_port=1, actions=2'
+ovs-ofctl add-flow s2 'in_port=2, actions=1'
+
+
+ovs-ofctl add-flows s3 - << 'EOF'
+eth_type=0x0800, eth_src=11:11:11:11:11:11, actions=set_field:10.0.0.1->ip_src,set_field:10.0.0.4->ip_dst,set_field:00:00:00:00:00:01->eth_src,set_field:00:00:00:00:00:04->eth_dst,1
+eth_type=0x0800, eth_src=22:22:22:22:22:22, actions=set_field:10.0.0.2->ip_src,set_field:10.0.0.5->ip_dst,set_field:00:00:00:00:00:02->eth_src,set_field:00:00:00:00:00:05->eth_dst,2
+eth_type=0x0800, eth_src=33:33:33:33:33:33, actions=set_field:10.0.0.3->ip_src,set_field:10.0.0.6->ip_dst,set_field:00:00:00:00:00:03->eth_src,set_field:00:00:00:00:00:06->eth_dst,3
+in_port=1, eth_type=0x0800, actions=set_field:0.0.0.0->ip_src,set_field:0.0.0.0->ip_dst,set_field:44:44:44:44:44:44->eth_src,set_field:44:44:44:44:44:44->eth_dst,4
+in_port=2, eth_type=0x0800, actions=set_field:0.0.0.0->ip_src,set_field:0.0.0.0->ip_dst,set_field:55:55:55:55:55:55->eth_src,set_field:55:55:55:55:55:55->eth_dst,4
+in_port=3, eth_type=0x0800, actions=set_field:0.0.0.0->ip_src,set_field:0.0.0.0->ip_dst,set_field:66:66:66:66:66:66->eth_src,set_field:66:66:66:66:66:66->eth_dst,4
+EOF
