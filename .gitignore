@@ -1,4 +1,5 @@
 __pycache__
 *.pyc
-shortest_path_zifung.py
 *.swp
+.vscode
+.code-workspace.code-workspace
