@@ -22,13 +22,21 @@ class shortest_path(app_manager.RyuApp):
         self.topology_api_app = self
         self.net = nx.DiGraph()
         self.switch_map = {}
-        ## self.host_ip = {} 建立 fake mac addr table
+        self.host_fake_ip = {'10.0.0.1':'10.1.1.1',
+                                '10.0.0.2':'10.2.2.2',
+                                '10.0.0.3':'10.3.3.3',
+                                '10.0.0.4':'10.4.4.4',
+                                '10.0.0.5':'10.5.5.5',
+                                '10.0.0.10':'10.8.8.8',
+                                # '10.0.0.10':'10.0.0.8', ###
+                                } 
         self.arp_table = {'10.0.0.1':'00:00:00:00:00:01',
                             '10.0.0.2':'00:00:00:00:00:02',
                             '10.0.0.3':'00:00:00:00:00:03',
                             '10.0.0.4':'00:00:00:00:00:04',
                             '10.0.0.5':'00:00:00:00:00:05',
-                            '10.0.0.10':'00:00:00:00:00:06'
+                            '10.0.0.8':'00:00:00:00:00:06',
+                            # '10.0.0.10':'00:00:00:00:00:06' ###
                             }
     
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -86,6 +94,13 @@ class shortest_path(app_manager.RyuApp):
             path = nx.shortest_path(self.net, pkt_ethernet.src, pkt_ethernet.dst)
             print(path)
 
+            if pkt_ip.dst == '10.0.0.8':
+                pkt_ip.dst = '10.0.0.10'
+                print(pkt_ip.dst)
+            if pkt_ip.src == '10.0.0.8':
+                pkt_ip.src = '10.0.0.10'
+                print(pkt_ip.src)
+
             if len(path) > 3:
                 # print("more than two switch")
                 for on_path_node in range(1, len(path)-1):
@@ -97,14 +112,18 @@ class shortest_path(app_manager.RyuApp):
 
                     if on_path_node == 1:
                         next_match = parser.OFPMatch(eth_type=0x0800, eth_src=pkt_ethernet.src, eth_dst=pkt_ethernet.dst)
-                        next_action = parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, [parser.OFPActionSetField(ipv4_src='0.0.0.0'), 
-                                                                                            parser.OFPActionSetField(ipv4_dst='0.0.0.0'), 
+                        next_action = parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, [parser.OFPActionSetField(ipv4_src=self.host_fake_ip[pkt_ip.src]), 
+                                                                                            parser.OFPActionSetField(ipv4_dst=self.host_fake_ip[pkt_ip.dst]), 
                                                                                             parser.OFPActionOutput(next_port)])
                         
                         back_match = parser.OFPMatch(eth_type=0x0800, eth_src=pkt_ethernet.dst, eth_dst=pkt_ethernet.src)
                         back_action = parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, [parser.OFPActionSetField(ipv4_src=pkt_ip.dst), 
                                                                                             parser.OFPActionSetField(ipv4_dst=pkt_ip.src), 
                                                                                             parser.OFPActionOutput(back_port)])
+                        inst = [next_action]
+                        self.add_flow(dp=self.switch_map[now_node], match=next_match, inst=inst)
+                        inst = [back_action]
+                        self.add_flow(dp=self.switch_map[now_node], match=back_match, inst=inst)                        
 
                     elif on_path_node == len(path)-2:
                         next_match = parser.OFPMatch(eth_type=0x0800, eth_src=pkt_ethernet.src, eth_dst=pkt_ethernet.dst)
@@ -112,20 +131,23 @@ class shortest_path(app_manager.RyuApp):
                                                                                             parser.OFPActionSetField(ipv4_dst=pkt_ip.dst),
                                                                                             parser.OFPActionOutput(next_port)])
                         back_match = parser.OFPMatch(eth_type=0x0800, eth_src=pkt_ethernet.dst, eth_dst=pkt_ethernet.src)
-                        back_action = parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, [parser.OFPActionSetField(ipv4_src='0.0.0.0'),
-                                                                                            parser.OFPActionSetField(ipv4_dst='0.0.0.0'),
+                        back_action = parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, [parser.OFPActionSetField(ipv4_src=self.host_fake_ip[pkt_ip.dst]),
+                                                                                            parser.OFPActionSetField(ipv4_dst=self.host_fake_ip[pkt_ip.src]),
                                                                                             parser.OFPActionOutput(back_port)])
+                        inst = [next_action]
+                        self.add_flow(dp=self.switch_map[now_node], match=next_match, inst=inst)
+                        inst = [back_action]
+                        self.add_flow(dp=self.switch_map[now_node], match=back_match, inst=inst)
 
                     else:
                         next_match = parser.OFPMatch(eth_dst=pkt_ethernet.dst)
                         next_action = parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, [parser.OFPActionOutput(next_port)])
                         back_match = parser.OFPMatch(eth_dst=pkt_ethernet.src)
                         back_action = parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, [parser.OFPActionOutput(back_port)])
-
-                    inst = [next_action]
-                    self.add_flow(dp=self.switch_map[now_node], match=next_match, inst=inst)
-                    inst = [back_action]
-                    self.add_flow(dp=self.switch_map[now_node], match=back_match, inst=inst)
+                        inst = [next_action]
+                        self.add_flow(dp=self.switch_map[now_node], match=next_match, inst=inst, priority=10)
+                        inst = [back_action]
+                        self.add_flow(dp=self.switch_map[now_node], match=back_match, inst=inst, priority=10)
                     # print("now switch: %s" % now_switch)
 
             else: ########### 還沒匿名
@@ -160,7 +182,7 @@ class shortest_path(app_manager.RyuApp):
         self.net.add_nodes_from(switches)
         self.net.add_edges_from(links)
 
-    def add_flow(self, dp, cookie=0, match=None, inst=[], table=0, priority=10):
+    def add_flow(self, dp, cookie=0, match=None, inst=[], table=0, priority=20):
         ofp = dp.ofproto
         parser = dp.ofproto_parser
         
