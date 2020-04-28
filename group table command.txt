@@ -1,0 +1,78 @@
+// s1 :去
+ovs-ofctl add-group s1 -O OpenFlow11 - << 'EOF'
+group_id=1,type=select,bucket=set_field:10.1.1.1->ip_src,group:2,bucket=set_field:10.2.2.1->ip_src,group:2,bucket=set_field:10.3.3.1->ip_src,group:2
+group_id=2,type=select,bucket=set_field:10.1.1.3->ip_dst,output:3,bucket=set_field:10.2.2.3->ip_dst,output:3,bucket=set_field:10.3.3.3->ip_dst,output:3
+EOF
+
+ovs-ofctl add-flow s1 'table=0, priority=10, eth_type=0x0800, nw_src=10.0.0.1, nw_dst=10.0.0.3, actions=group:1'
+
+
+// s2 :去
+ovs-ofctl add-group s2 -O OpenFlow11 - << 'EOF'
+group_id=1,type=select,bucket=set_field:10.1.1.1->ip_src,resubmit(,1),bucket=set_field:10.2.2.1->ip_src,resubmit(,1),bucket=set_field:10.3.3.1->ip_src,resubmit(,1)
+group_id=2,type=select,bucket=set_field:10.1.1.3->ip_dst,output:2,bucket=set_field:10.2.2.3->ip_dst,output:2,bucket=set_field:10.3.3.3->ip_dst,output:2
+EOF
+
+ovs-ofctl add-flow s2 - << 'EOF'
+table=0, priority=10, eth_type=0x0800, nw_src=10.1.1.1, actions=group:1
+table=0, priority=10, eth_type=0x0800, nw_src=10.2.2.1, actions=group:1
+table=0, priority=10, eth_type=0x0800, nw_src=10.3.3.1, actions=group:1
+table=1, priority=10, eth_type=0x0800, nw_dst=10.1.1.3, actions=group:2
+table=1, priority=10, eth_type=0x0800, nw_dst=10.2.2.3, actions=group:2
+table=1, priority=10, eth_type=0x0800, nw_dst=10.3.3.3, actions=group:2
+EOF
+
+// s3 :去
+ovs-ofctl add-group s3 -O OpenFlow11 'group_id=1,type=indirect,bucket=set_field:10.0.0.1->ip_src,set_field:10.0.0.3->ip_dst,output:1'
+
+ovs-ofctl add-flows s3 - << 'EOF'
+table=0, priority=10, eth_type=0x0800, nw_src=10.1.1.1, actions=resubmit(,1)
+table=0, priority=10, eth_type=0x0800, nw_src=10.2.2.1, actions=resubmit(,1)
+table=0, priority=10, eth_type=0x0800, nw_src=10.3.3.1, actions=resubmit(,1)
+table=1, priority=10, eth_type=0x0800, nw_dst=10.1.1.3, actions=group:1
+table=1, priority=10, eth_type=0x0800, nw_dst=10.2.2.3, actions=group:1
+table=1, priority=10, eth_type=0x0800, nw_dst=10.3.3.3, actions=group:1
+EOF
+
+
+// s1 :回
+ovs-ofctl add-group s1 -O OpenFlow11 'group_id=3,type=indirect,bucket=set_field:10.0.0.3->ip_src,set_field:10.0.0.1->ip_dst,output:1'
+
+ovs-ofctl add-flows s1 - << 'EOF'
+table=0, priority=10, eth_type=0x0800, nw_src=10.1.1.3, actions=resubmit(,1)
+table=0, priority=10, eth_type=0x0800, nw_src=10.2.2.3, actions=resubmit(,1)
+table=0, priority=10, eth_type=0x0800, nw_src=10.3.3.3, actions=resubmit(,1)
+table=1, priority=10, eth_type=0x0800, nw_dst=10.1.1.1, actions=group:3
+table=1, priority=10, eth_type=0x0800, nw_dst=10.2.2.1, actions=group:3
+table=1, priority=10, eth_type=0x0800, nw_dst=10.3.3.1, actions=group:3
+EOF
+
+// s2 :回
+ovs-ofctl add-group s2 -O OpenFlow11 - << 'EOF'
+group_id=3,type=select,bucket=set_field:10.1.1.3->ip_src,resubmit(,1),bucket=set_field:10.2.2.3->ip_src,resubmit(,1),bucket=set_field:10.3.3.3->ip_src,resubmit(,1)
+group_id=4,type=select,bucket=set_field:10.1.1.1->ip_dst,output:1,bucket=set_field:10.2.2.1->ip_dst,output:1,bucket=set_field:10.3.3.1->ip_dst,output:1
+EOF
+
+ovs-ofctl add-flow s2 - << 'EOF'
+table=0, priority=10, eth_type=0x0800, nw_src=10.1.1.3, actions=group:3
+table=0, priority=10, eth_type=0x0800, nw_src=10.2.2.3, actions=group:3
+table=0, priority=10, eth_type=0x0800, nw_src=10.3.3.3, actions=group:3
+table=1, priority=10, eth_type=0x0800, nw_dst=10.1.1.1, actions=group:4
+table=1, priority=10, eth_type=0x0800, nw_dst=10.2.2.1, actions=group:4
+table=1, priority=10, eth_type=0x0800, nw_dst=10.3.3.1, actions=group:4
+EOF
+
+// s3 :回
+ovs-ofctl add-group s3 -O OpenFlow11 - << 'EOF'
+group_id=3,type=select,bucket=set_field:10.1.1.3->ip_src,group:4,bucket=set_field:10.2.2.3->ip_src,group:4,bucket=set_field:10.3.3.3->ip_src,group:4
+group_id=4,type=select,bucket=set_field:10.1.1.1->ip_dst,output:3,bucket=set_field:10.2.2.1->ip_dst,output:3,bucket=set_field:10.3.3.1->ip_dst,output:3
+EOF
+
+ovs-ofctl add-flow s3 'table=0, priority=10, eth_type=0x0800, nw_src=10.0.0.3, nw_dst=10.0.0.1, actions=group:3'
+
+
+// trace flow table
+ovs-appctl ofproto/trace s1 in_port=1
+ovs-appctl ofproto/trace s1 in_port=1,tcp,nw_src=10.0.0.1,nw_dst=10.0.0.3
+ovs-appctl ofproto/trace s2 in_port=1,tcp,nw_src=10.3.3.1,nw_dst=10.2.2.3
+ovs-appctl ofproto/trace s3 in_port=3,tcp,nw_src=10.3.3.1,nw_dst=10.2.2.3

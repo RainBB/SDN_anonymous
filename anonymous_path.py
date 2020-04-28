@@ -14,11 +14,11 @@ from ryu.topology.api import get_switch, get_link
 
 import networkx as nx
 
-class shortest_path(app_manager.RyuApp):
+class anonymous_path(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(shortest_path, self).__init__(*args, **kwargs)
+        super(anonymous_path, self).__init__(*args, **kwargs)
         self.topology_api_app = self
         self.net = nx.DiGraph()
         self.switch_map = {}
@@ -28,7 +28,6 @@ class shortest_path(app_manager.RyuApp):
                                 '10.0.0.4':'10.4.4.4',
                                 '10.0.0.5':'10.5.5.5',
                                 '10.0.0.10':'10.8.8.8',
-                                # '10.0.0.10':'10.0.0.8', ###
                                 } 
         self.arp_table = {'10.0.0.1':'00:00:00:00:00:01',
                             '10.0.0.2':'00:00:00:00:00:02',
@@ -36,7 +35,7 @@ class shortest_path(app_manager.RyuApp):
                             '10.0.0.4':'00:00:00:00:00:04',
                             '10.0.0.5':'00:00:00:00:00:05',
                             '10.0.0.8':'00:00:00:00:00:06',
-                            # '10.0.0.10':'00:00:00:00:00:06' ###
+                            '10.0.0.10':'00:00:00:00:00:06'
                             }
     
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -96,10 +95,10 @@ class shortest_path(app_manager.RyuApp):
 
             if pkt_ip.dst == '10.0.0.8':
                 pkt_ip.dst = '10.0.0.10'
-                print(pkt_ip.dst)
-            if pkt_ip.src == '10.0.0.8':
-                pkt_ip.src = '10.0.0.10'
-                print(pkt_ip.src)
+                # print(pkt_ip.dst)
+            if pkt_ip.src == '10.0.0.10':
+                pkt_ip.src = '10.0.0.8'
+                # print(pkt_ip.src)
 
             if len(path) > 3:
                 # print("more than two switch")
@@ -233,7 +232,7 @@ class shortest_path(app_manager.RyuApp):
 
         pkt.add_protocol(
             arp.arp(
-                opcode=arp.ARP_REPLY,
+                opcode = arp.ARP_REPLY,
                 src_mac= get_mac,
                 src_ip = pkt_arp.dst_ip,
                 dst_mac= pkt_arp.src_mac,
