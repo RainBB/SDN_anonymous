@@ -17,10 +17,11 @@ class SwitchHandleArp(app_manager.RyuApp):
         super(SwitchHandleArp, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         self.topology_api_app = self
-        self.arp_table = {'10.0.0.1':'00:00:00:00:00:01',
-                          '10.0.0.2':'00:00:00:00:00:02',
-                          '10.0.0.3':'00:00:00:00:00:03',
-                          '10.0.0.4':'00:00:00:00:00:04'}
+        self.arp_table = {}
+        # self.arp_table = {'10.0.0.1':'00:00:00:00:00:01',
+        #                   '10.0.0.2':'00:00:00:00:00:02',
+        #                   '10.0.0.3':'00:00:00:00:00:03',
+        #                   '10.0.0.4':'00:00:00:00:00:04'}
 
     @set_ev_cls(event.EventSwitchEnter)
     def get_topology(self, ev):
@@ -80,19 +81,19 @@ class SwitchHandleArp(app_manager.RyuApp):
         if not pkt_ethernet:
             return
 
+        src_mac = pkt_ethernet.src
+        dst_mac = pkt_ethernet.dst
+
         # filter LLDP packet 0x88CC
         if pkt_ethernet.ethertype == 35020:
             return
 
         # handle arp packet 0x0806
-        pkt_arp = pkt.get_protocol(arp.arp)
+        pkt_arp = pkt.get_protocol(arp.arp)        
         if pkt_ethernet.ethertype == 2054:
+            self.arp_table[pkt_arp.src_ip] = src_mac
             self.handle_arp(dp, in_port, pkt_ethernet, pkt_arp)
             return
-
-        src_mac = pkt_ethernet.src
-        dst_mac = pkt_ethernet.dst
-
 
         # initialize the mac_to_port dictionary
         dpid = dp.id
